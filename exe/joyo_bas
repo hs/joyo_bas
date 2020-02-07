@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require "joyo_bas"
+
+JoyoBas::Cli.start
