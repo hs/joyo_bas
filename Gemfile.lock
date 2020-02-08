@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    joyo_bas (0.1.0)
+    joyo_bas (0.2.0)
       rubyXL
       selenium-webdriver
       thor

@@ -8,10 +8,11 @@ module JoyoBas
   class Error < StandardError; end
   # Your code goes here...
   class Config
-    attr_accessor :id, :password, :accounts, :path
+    attr_accessor :id, :password, :accounts, :path, :headless
     def initialize
       root = Gem::Specification.find_by_name("joyo_bas").gem_dir
       conf = YAML.load_file(File.join(root,'config.yml'))
+      @headless = conf['headless']
       @id       = conf['id']
       @password = conf['password']
       @accounts = conf['accounts']
@@ -92,17 +93,20 @@ module JoyoBas
   class Crawler
     def initialize(conf)
       @conf = conf
-      @wd = Selenium::WebDriver.for :chrome
+      opts = Selenium::WebDriver::Chrome::Options.new
+      opts.add_argument('--headless') if @conf.headless
+      @wd = Selenium::WebDriver.for :chrome, options: opts
+      # Resize window to avoid unclickable buttons
+      @wd.manage.window.resize_to(1000,2000)
+      @wait = Selenium::WebDriver::Wait.new(:timeout => 60)
       @sday = Date.new(Date.today.prev_month.year, Date.today.prev_month.month,1)
       @eday = Date.new(Date.today.prev_month.year, Date.today.prev_month.month,-1)
     end
 
     def fetch
-      w = Selenium::WebDriver::Wait.new(:timeout => 60)
       result = {}
 
       login
-      w.until{@wd.find_element(:link, 'ヘルプデスク').displayed?}
       @conf.accounts.each do |account|
         result[account] = []
         select_account(account)
@@ -122,12 +126,15 @@ module JoyoBas
 
     def login
       @wd.navigate.to get_login_url
+      @wait.until{@wd.find_element(:xpath, '//button[@type="submit"]').displayed?}
       id = @wd.find_element(:xpath, '//input[@name="CLIENTIDNUMBER"]')
       pass = @wd.find_element(:xpath, '//input[@name="PASSWORD"]')
       id.send_keys(@conf.id)
       pass.send_keys(@conf.password)
 
+      @wd.find_element(:xpath, '//input[@type="reset"]').location_once_scrolled_into_view
       @wd.find_element(:xpath, '//button[@type="submit"]').click
+      @wait.until{@wd.find_element(:link, 'ヘルプデスク').displayed?}
     end
 
     def select_account(account)
@@ -173,7 +180,7 @@ module JoyoBas
         cont = (@wd.find_elements(:xpath, '//img[@alt="次へ"]').size > 0)
         if cont
           @wd.find_element(:xpath, '//img[@alt="次へ"]/..').click
-          w.until{@wd.find_element(:xpath, '//img[@alt="戻る"]').displayed?}
+          @wait.until{@wd.find_element(:xpath, '//img[@alt="戻る"]').displayed?}
         end
       end while cont
       ret

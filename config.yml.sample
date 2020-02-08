@@ -1,3 +1,4 @@
+headless: false # cron などで動かす場合は'true'にする
 id: "[契約者番号]"
 password: "[ログインパスワード]"
 accounts: 
